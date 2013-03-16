@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+
+<html lang="en" >
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<title>Game Timer</title>
+	<meta name="viewport"  content="width=device-width, minimum-scale=1.0, maximum-scale=1.0" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="author" content="Gregor McNish">
+	<!--
+	 
+	Testing
+		clock keeps going when screen off (like smacktalk)
+		Timer can keep going even when exit app, cause using date, not timing
+		
+		Game timer
+			Usage
+				click colour to stop/start timer for that person
+				if one persons is started, clicking another person's automatically stops it
+			New Game; resets timers
+					
+
+		on launch
+			checks local storage for current game
+			if null, means is ready for a new game
+			if filled, continues the counts
+			any state change writes to local storage
+	
+
+
+			
+		implementation
+			clock ==minutes/seconds counter
+			times[n] accumulator for player
+			current: current player
+			
+		Possibilities
+			total game time
+			individuals as percentage
+			
+			if timer is going, could press at end to count it as your time, timer restarts. Next person just presses it. could touch the timer to pause it, touch again to reset or start it... Might be simpler; cause in other case if someone's forgotten to press...
+			
+			cache works on wombat, not sure about ae.
+			working revision 1.2
+			
+			
+			
+	-->
+<script type="text/javascript" charset="utf-8">
+
+var timer=function(){
+	var times=[0,0,0,0,0,0,0]; //index 0 holds clock start time
+	var start,finish; //turn start/finish -- because can't rely on counter
+	var current; //player
+	var interval=1000; //how often clock runs
+	var now,t,i;
+	var c; //holds timer
+
+	function init(){
+        //is a game running? if so load, if not set up a new one
+		if (localStorage.length){
+			for (i=1;i<times.length;i++){
+				times[i]=parseInt(localStorage.getItem('t'+i));
+				document.getElementById('t'+i).value=timecount(times[i]);
+			}
+			current=parseInt(localStorage.getItem('current'));
+            start=parseInt(localStorage.getItem('start'));					
+			if (current){
+                document.getElementById('t'+current).style.borderColor="white";
+				clock();//keep clock running
+                c=setInterval(clock,interval); //because start not 0
+			}
+		}
+		else {
+			newgame();
+		}
+	}
+
+	function newgame(){
+		localStorage.clear();
+        times=[0,0,0,0,0,0,0];
+		if (current){
+			document.getElementById('t'+current).style.borderColor="black";
+		}
+        clockreset();
+		current=0;
+        start=0;
+		store();
+		init();
+	}
+	
+	function store(){
+		for (i=0;i<times.length;i++){
+			localStorage.setItem('t'+i,times[i]);
+		}
+		localStorage.setItem('current',current);
+		localStorage.setItem('start',start);
+	}
+	
+	function timecount(seconds){
+		var m=Math.floor(seconds/60);
+		var s=seconds%60;
+		return m+":"+((s<10)?"0":"")+s;
+	}
+
+	function clockreset(){
+		document.getElementById('clock').value=timecount(0);
+		clearInterval(c);
+	}
+	
+	function clock(){
+		now=new Date();
+		if (start===0){ //start clock		
+			start=now.getTime();
+			localStorage.setItem('start',start);
+            c=setInterval(clock,interval);
+		}
+		document.getElementById('clock').value=timecount(Math.round((now.getTime()-start)/1000));
+	}
+
+
+    function turn(p){
+        //player button has been pressed
+        clockreset();
+		now= new Date();
+		if (current===0){
+			current=p;
+			document.getElementById('t'+current).style.borderColor="white";
+			clock();
+		} else {
+			finish=now.getTime();
+            console.log(typeof(times[current]),times[current],finish,start);
+			times[current]=times[current]+Math.round((finish-start)/1000); //parseInt because sometimes? treated as string??
+            start=0;
+			localStorage.setItem('t'+current,times[current]); //save state
+		//	console.log (current+" finished");
+			document.getElementById('t'+current).style.borderColor="black";
+			document.getElementById('t'+current).value=timecount(times[current]);
+			if (current==p){
+				current=0;
+			} else {
+				current=p;
+				document.getElementById('t'+current).style.borderColor="white";
+				clock();
+			}
+		}
+
+		localStorage.setItem('current',current); //save state
+
+	}
+	return {
+		turn:turn,
+		newgame:newgame,
+        init:init
+	};
+}();
+</script>
+	
+<style>
+	
+	body {font-family:Helvetica, Arial, Verdana, sans-serif;
+		margin:0;
+		padding:5px;
+		background:rgba(0,0,0,1);
+		text-align:center;
+		-webkit-text-size-adjust:300%;
+	}
+	#clock {width:80%;text-align:center;margin:0;}
+	#timers {width:100%;
+		}
+	input[type="button"] {
+		width:140px;
+		border:5px solid black;
+		padding:5px;
+		-webkit-appearance:square-button;
+		background:white;
+	}
+	input#new {width:240px;}
+	#t1 {background:yellow;}
+	#t2 {background:green;}	
+	#t3 {background:blue;}
+	#t4 {background:orange;}
+	#t5 {background:purple;}
+	#t6 {background:red;}
+
+
+</style>
+</head>
+<body onload="timer.init();">
+
+	<input type="text" id="clock" readonly>
+	<div id="timers"><input type="button" id="t1" value="0:00" onclick="timer.turn(1);"><input type="button" id="t2" value="0:00" onclick="timer.turn(2);"><input type="button" id="t3" value="0:00" onclick="timer.turn(3);"><input type="button" id="t4" value="0:00" onclick="timer.turn(4);"><input type="button" id="t5" value="0:00" onclick="timer.turn(5);"><input type="button" id="t6" value="0:00" onclick="timer.turn(6);"></div><input type="button" id="new" value="New Game" onclick="timer.newgame();">
+</body>
+</html>
